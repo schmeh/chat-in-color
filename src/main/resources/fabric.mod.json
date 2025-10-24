@@ -1,0 +1,45 @@
+{
+	"schemaVersion": 1,
+	"id": "chatincolor",
+	"version": "${version}",
+	"name": "Chat in Color",
+	"description": "A Fabric client-side mod that assigns players a random color in chat to make differentiating players easier.",
+	"authors": [
+		"schmeh"
+	],
+	"contact": {
+		"homepage": "https://github.com/schmeh/chat-in-color",
+		"sources": "https://github.com/schmeh/chat-in-color"
+	},
+	"license": "Apache-2.0",
+	"icon": "assets/chatincolor/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			{
+				"value": "io.github.schmeh.chatincolor.ChatInColor",
+				"adapter": "kotlin"
+			}
+		],
+		"client": [
+			{
+				"value": "io.github.schmeh.chatincolor.ChatInColorClient",
+				"adapter": "kotlin"
+			}
+		]
+	},
+	"mixins": [
+		"chatincolor.mixins.json",
+		{
+			"config": "chatincolor.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.17.2",
+		"minecraft": ">=1.21",
+		"java": ">=21",
+		"fabric-api": "*",
+		"fabric-language-kotlin": "*"
+	}
+}

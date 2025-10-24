@@ -1,0 +1,9 @@
+# Set the default behavior for all files
+* text=auto
+
+# For all files identified as text, enforce LF line endings
+* text eol=lf
+
+# Explicitly mark binary files to prevent any line ending conversions
+*.png binary
+*.jar binary
