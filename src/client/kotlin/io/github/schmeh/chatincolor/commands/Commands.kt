@@ -10,13 +10,15 @@ import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 
-import io.github.schmeh.chatincolor.players.setPlayerColor
-import io.github.schmeh.chatincolor.players.unsetPlayerColor
-import io.github.schmeh.chatincolor.players.getSetPlayerColors
+import io.github.schmeh.chatincolor.manager.PlayerManager
+
+import io.github.schmeh.chatincolor.player.Player
+import io.github.schmeh.chatincolor.player.Players
 
 import io.github.schmeh.chatincolor.util.hexToInt
+import io.github.schmeh.chatincolor.util.randomSaturatedColor
 
-import io.github.schmeh.chatincolor.suggestions.OnlinePlayerNameSuggestionProvider
+import io.github.schmeh.chatincolor.suggestions.AllPlayerNameSuggestionProvider
 import io.github.schmeh.chatincolor.suggestions.SetPlayerNameSuggestionProvider
 
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.*
@@ -26,7 +28,7 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager.*
  */
 fun buildSetColorCommand() = literal("setColor")
         .then(argument("playerName", StringArgumentType.word())
-                .suggests(OnlinePlayerNameSuggestionProvider)
+                .suggests(AllPlayerNameSuggestionProvider)
                 .then(argument("hex", StringArgumentType.greedyString())
                         .executes { ctx ->
                             val player = StringArgumentType.getString(ctx, "playerName")
@@ -34,7 +36,9 @@ fun buildSetColorCommand() = literal("setColor")
 
                             try {
                                 val color = hexToInt(hex)
-                                setPlayerColor(player, color)
+                                val playerData = PlayerManager.players.players.getOrPut(player) { Player(null) }
+                                playerData.setPlayerColor(color)
+                                PlayerManager.save()
                                 ctx.source.sendFeedback(Text.literal("Set custom color for $player to $hex"))
                             } catch (e: Exception) {
                                 ctx.source.sendFeedback(Text.literal("Invalid hex color: $hex"))
@@ -53,7 +57,8 @@ fun buildUnsetColorCommand() = literal("unsetColor")
                 .executes { ctx ->
                     val player = StringArgumentType.getString(ctx, "playerName")
 
-                    if (unsetPlayerColor(player)) {
+                    if (PlayerManager.players[player] != null && PlayerManager.players[player]!!.unsetPlayerColor()) {
+                        PlayerManager.save()
                         ctx.source.sendFeedback(Text.literal("Unset custom color for $player"))
                     } else {
                         ctx.source.sendFeedback(Text.literal("No custom color was set for $player"))
@@ -67,7 +72,7 @@ fun buildUnsetColorCommand() = literal("unsetColor")
  */
 fun buildGetSetColorsCommand() = literal("getSetColors")
         .executes { ctx ->
-            val setPlayerColors = getSetPlayerColors()
+            val setPlayerColors = PlayerManager.players.getSetPlayerColors()
             if (setPlayerColors.size == 0) {
                 ctx.source.sendFeedback(Text.literal("No player colors set"))
             } else {
@@ -85,13 +90,24 @@ fun buildGetSetColorsCommand() = literal("getSetColors")
         }
 
 /**
+ * Build command to randomize all player random colors
+ */
+fun buildRandomizeColorsCommand() = literal("randomizeColors")
+        .executes { ctx ->
+            PlayerManager.players.randomizeAllPlayerRandomColors()
+            ctx.source.sendFeedback(Text.literal("Randomized all player colors"))
+            Command.SINGLE_SUCCESS
+        }
+
+/**
  * Build help command
  */
 fun buildHelpCommand() = literal("help").executes { ctx ->
     val messages = listOf(
             "/chatincolor setColor <player> <#HEX> - Set a player's color",
             "/chatincolor unsetColor <player> - Remove a player's custom color",
-            "/chatincolor listColors - List all players with custom colors"
+            "/chatincolor listColors - List all players with custom colors",
+            "/chatincolor randomizeColors - Randomize all random colors. Does not affect players with set colors",
     )
 
     for (msg in messages) {

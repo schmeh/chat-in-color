@@ -9,14 +9,14 @@ import net.minecraft.text.StringVisitable
 
 import net.minecraft.util.Formatting
 
-import io.github.schmeh.chatincolor.players.clearRandomColors
-import io.github.schmeh.chatincolor.players.getPlayerColor
-import io.github.schmeh.chatincolor.players.isPlayerName
-import io.github.schmeh.chatincolor.players.getOnlinePlayerNames
-import io.github.schmeh.chatincolor.players.setRandomColor
+import io.github.schmeh.chatincolor.manager.PlayerManager
+
+import io.github.schmeh.chatincolor.player.Player
+import io.github.schmeh.chatincolor.player.Players
 
 import io.github.schmeh.chatincolor.util.ValidWord
 import io.github.schmeh.chatincolor.util.splitValidAndInvalidWords
+import io.github.schmeh.chatincolor.util.randomSaturatedColor
 
 import net.minecraft.client.MinecraftClient
 
@@ -36,6 +36,8 @@ object ChatInColorClient : ClientModInitializer {
 	private var arePlayersInit = false
 
 	override fun onInitializeClient() {
+		PlayerManager.load()
+
 		// Color chat messages sent by players
 		ClientReceiveMessageEvents.ALLOW_CHAT.register { message, _, _, _, _ ->
 			// Add a random color for each online player.
@@ -56,7 +58,7 @@ object ChatInColorClient : ClientModInitializer {
 
 		// Reset player colors when disconnecting
 		ClientPlayConnectionEvents.DISCONNECT.register { _, _ ->
-			clearRandomColors()
+			PlayerManager.players.clearUnsetPlayers()
 			arePlayersInit = false
 		}
 
@@ -66,20 +68,24 @@ object ChatInColorClient : ClientModInitializer {
 					.then(buildSetColorCommand())
 					.then(buildUnsetColorCommand())
 					.then(buildGetSetColorsCommand())
+					.then(buildRandomizeColorsCommand())
 					.then(buildHelpCommand())
 			)
 		}
 	}
 
 	/**
-	 * Add a random color for each online player. Return true if successful false if the player list is empty.
+	 * Add each online player to the players map if not already present, assigning them a random saturated color.
+	 * Return true if there is at least one player online, false otherwise.
 	 */
 	private fun initPlayers(): Boolean {
-		var players = getOnlinePlayerNames()
-		for (player in getOnlinePlayerNames()) {
-			setRandomColor(player)
+		var onlinePlayers = PlayerManager.players.getOnlinePlayerNames()
+		for (name in onlinePlayers) {
+			if (PlayerManager.players[name] == null) {
+				PlayerManager.players[name] = Player(null)
+			}
 		}
-		return (!players.isEmpty())
+		return onlinePlayers.isNotEmpty()
 	}
 
 	/**
@@ -95,9 +101,13 @@ object ChatInColorClient : ClientModInitializer {
 			override fun accept(style: Style, content: String): Optional<Void> {
 				// Split content into words (or spaces) while preserving spacing
 				for (word in splitValidAndInvalidWords(content)) {
-					val textPart = if (isPlayerName(word.string)) {
+					val textPart = if (PlayerManager.players.isPlayerName(word.string)) {
+						// If the player isn't already in the map, add them with a random color
+						if (PlayerManager.players[word.string] == null) {
+							PlayerManager.players[word.string] = Player(null)
+						}
 						foundName = true
-						val color = getPlayerColor(word.string)
+						val color = PlayerManager.players[word.string]!!.getEffectiveColor()
 						Text.literal(word.string)
 								.setStyle(style.withColor(TextColor.fromRgb(color))) // override color only
 					} else {
