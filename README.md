@@ -24,6 +24,8 @@ Chat In Color is a lightweight client-side Fabric mod that assigns each player a
 
 - `/chatincolor getSetColors`: List all currently set player colors
 
+- `/chatincolor randomizeColors`: Randomize colors for all players without set colors
+
 - `/chatincolor help`: Displays all available commands
 
 # Building
